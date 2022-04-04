@@ -4,6 +4,7 @@ using System.Diagnostics;
 using System.Collections.Generic;
 using System.Net.Http;
 using System.Net.Http.Headers;
+using System.Threading;
 using System.Threading.Tasks;
 using System.Text.Json;
 using System.IO;
@@ -17,25 +18,43 @@ namespace Lamp
         static async Task Main(string[] args)
         {
             bool operating = true;
-            if(args.Length > 0)
+            bool auto = false;
+            bool forced = false;
+            bool test = false;
+            foreach(string arg in args)
             {
-             
+                       
                 switch (args[0].ToLower())
                 {
                     case "--automated":
                     case "--auto":
                     case "--a":
-                        AutomatedUpdate(false);
+                        auto = true;
                         break;
                     case "--force":
                     case "--f":
-                        AutomatedUpdate(true);
+                        forced = true;
+                        break;
+                    case "--t":
+                    case "--test":
+                        test = true;
                         break;
                     case "--interactive":
                     case "--i":
                     default:
                         RunInteractive();
                         break;
+                }
+            }
+            if (auto)
+            {
+                if(test)
+                {
+                    AutomatedTest();
+                }
+                else
+                {
+                    AutomatedUpdate(forced);
                 }
             }
             else
@@ -58,7 +77,7 @@ namespace Lamp
             Console.Write(current.Version);
             Console.WriteLine(Fluff.Prompt);
             Console.Write(Fluff.Server);
-            Release latest = GetLatestRelease().Result;
+            Release latest = GetRelease(Paths.GitHub.LatestRelease).Result;
             if(latest.Version == "404")
             {
                 Console.Write(latest.AssetsURL);
@@ -69,17 +88,23 @@ namespace Lamp
                 Console.Write(latest.Version);
                 Console.WriteLine(Fluff.Prompt);
                 Console.WriteLine("Would you like to download the latest version?");
-                Console.WriteLine("Yes to download, literally anything else to close out.");
+                Console.WriteLine($"Yes or Latest to download Genie {latest.Version}.");
+                Console.WriteLine("Test to download the latest Test Release.");
                 Console.WriteLine(Fluff.Prompt);
                 string? response = Console.ReadLine();
-                if (response.ToLower().StartsWith("y"))
+                if (response.ToLower().StartsWith("y") || response.ToLower().StartsWith("latest"))
                 {
                     Console.WriteLine(Fluff.Prompt);
                     AutomatedUpdate(latest, current, true);
                 }
+                if (response.ToLower().StartsWith("test"))
+                {
+                    Console.WriteLine(Fluff.Prompt);
+                    AutomatedTest();
+                }
                 else
                 {
-                    if(current.Version != "0")
+                    if (current.Version != "0")
                     {
                         Console.WriteLine(Fluff.Exit);
                         Console.WriteLine("[Launching Genie]");
@@ -94,7 +119,7 @@ namespace Lamp
         private static void  AutomatedUpdate(bool force)
         {
             Release current = GetCurrentVersion().Result;
-            Release latest = GetLatestRelease().Result;
+            Release latest = GetRelease(Paths.GitHub.LatestRelease).Result;
             AutomatedUpdate(latest, current, force);
         }
         private static void AutomatedUpdate(Release latest, Release current, bool force)
@@ -111,27 +136,38 @@ namespace Lamp
             }
         }
 
-        private static void AcquirePackage(Release latest)
+        private static void AutomatedTest()
+        {
+            Release testRelease = GetRelease(Paths.GitHub.TestRelease).Result;
+            AcquirePackage(testRelease);
+        }
+
+        private static void AcquirePackage(Release release)
         {
             if (!RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
             {
                 Console.Write("The Updater is not currently supported for this system.");
             }
-            latest.LoadAssets();
             try
             {
-                Asset zipFile = DownloadZip(latest);
+                release.LoadAssets();
+                Asset zipFile = DownloadZip(release);
                 if (File.Exists(zipFile.LocalFilepath))
                 {
+                    FileInfo file = new FileInfo(zipFile.LocalFilepath);
+                    do { Thread.Sleep(10); } while (FileIsLocked(file));
                     Console.WriteLine("Extracting Files.");
                     ZipFile.ExtractToDirectory(zipFile.LocalFilepath, Environment.CurrentDirectory, true);
+                    do { Thread.Sleep(10); } while (FileIsLocked(file));
                     Console.WriteLine("Cleaning Up.");
                     File.Delete(zipFile.LocalFilepath);
-                    if (File.Exists($"{Environment.CurrentDirectory}\\genie.exe"))
+                    if (File.Exists(@$"{Environment.CurrentDirectory}\genie.exe"))
                     {
                         Console.WriteLine("Launching Genie");
                         if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
                         {
+                            file = new FileInfo(@$"{Environment.CurrentDirectory}\genie.exe");
+                            do { Thread.Sleep(10); } while (FileIsLocked(file));
                             Process.Start($"{Environment.CurrentDirectory}\\genie.exe");
                         }
                     }
@@ -184,7 +220,7 @@ namespace Lamp
             return zipAsset;
         }
 
-        private static async Task<Release> GetLatestRelease()
+        private static async Task<Release> GetRelease(string githubPath)
         {
             client.DefaultRequestHeaders.Accept.Clear();
             client.DefaultRequestHeaders.Accept.Add(new MediaTypeWithQualityHeaderValue("application/vnd.github.v3+json"));
@@ -218,33 +254,26 @@ namespace Lamp
             
         }
 
-        public static void OpenBrowser(string url)
+        private static bool FileIsLocked(FileInfo file)
         {
             try
             {
-                Process.Start(url);
+                using (FileStream stream = file.Open(FileMode.Open, FileAccess.Read, FileShare.None))
+                {
+                    stream.Close();
+                }
             }
-            catch
+            catch (IOException)
             {
-                // hack because of this: https://github.com/dotnet/corefx/issues/10361
-                if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
-                {
-                    url = url.Replace("&", "^&");
-                    Process.Start(new ProcessStartInfo("cmd", $"/c start {url}") { CreateNoWindow = true });
-                }
-                else if (RuntimeInformation.IsOSPlatform(OSPlatform.Linux))
-                {
-                    Process.Start("xdg-open", url);
-                }
-                else if (RuntimeInformation.IsOSPlatform(OSPlatform.OSX))
-                {
-                    Process.Start("open", url);
-                }
-                else
-                {
-                    throw;
-                }
+                //the file is unavailable because it is:
+                //still being written to
+                //or being processed by another thread
+                //or does not exist (has already been processed)
+                return true;
             }
+
+            //file is not locked
+            return false;
         }
     }
 }

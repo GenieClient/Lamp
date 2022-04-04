@@ -5,8 +5,8 @@
     <TargetFramework>net6.0</TargetFramework>
     <ImplicitUsings>disable</ImplicitUsings>
     <Nullable>enable</Nullable>
-    <FileVersion>1.0.0.0</FileVersion>
-    <AssemblyVersion>1.0.0.0</AssemblyVersion>
+    <FileVersion>1.0.0.1</FileVersion>
+    <AssemblyVersion>1.0.0.1</AssemblyVersion>
     <Description>Updater for Genie 4</Description>
   </PropertyGroup>
 

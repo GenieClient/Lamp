@@ -11,6 +11,8 @@ namespace Lamp
         public static class GitHub
         {
             public const string LatestRelease = @"https://api.github.com/repos/GenieClient/Genie4/releases/latest";
+            public const string TestRelease = @"https://api.github.com/repos/GenieClient/Genie4/releases/tags/Test_Build";
+
         }
 
         public static class FileNames

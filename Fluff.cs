@@ -14,6 +14,7 @@ namespace Lamp
         public const string Prompt = "\r\n\r\n> ";
         public const string Examine = "You inspect the feather closely.\r\nYour Genie version is: ";
         public const string Server = "The image of the feather seems to twist, as if seen through a wave of hot air.\r\nThe latest released version is: ";
+        public const string Test = "The image of the feather warps about, for a moment seeming almost to reflect the shimmering walls. As you watch, gemoetric patterns of silver\r\nbegin to spread across the hairs of the feather, webbing out at rigid 45 degree angles.";
         public const string Exit = "A loud squeaking noise echoes from one side of the chamber. The feather distorts and you feel your\r\nsenses shift as you're drawn out of the Lamp.";
 
 
