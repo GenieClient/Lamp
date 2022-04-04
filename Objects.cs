@@ -1,11 +1,6 @@
-﻿using System;
-using System.Text.Json.Serialization;
+﻿using System.Text.Json.Serialization;
 using System.Collections.Generic;
-using System.Linq;
-using System.Net.Http;
-using System.Net.Http.Headers;
-using System.Text.Json;
-using System.Threading.Tasks;
+
 
 namespace Lamp
 {
@@ -20,21 +15,7 @@ namespace Lamp
         public Dictionary<string, Asset> Assets { get; set; }
         public void LoadAssets()
         {
-            if (!string.IsNullOrWhiteSpace(AssetsURL))
-            {
-                Assets = new Dictionary<string, Asset>();
-                HttpClient client = new HttpClient();
-                client.DefaultRequestHeaders.Accept.Clear();
-                client.DefaultRequestHeaders.Accept.Add(new MediaTypeWithQualityHeaderValue("application/vnd.github.v3+json"));
-                client.DefaultRequestHeaders.Add("User-Agent", "Genie Client Updater");
-
-                var streamTask = client.GetStreamAsync(AssetsURL).Result;
-                List<Asset> latestAssets = JsonSerializer.Deserialize<List<Asset>>(streamTask);
-                foreach(Asset asset in latestAssets)
-                {
-                    Assets.Add(asset.Name, asset);
-                }
-            }
+            FileHandler.LoadReleaseAssets(this);
         }
 
     }
@@ -47,7 +28,7 @@ namespace Lamp
         public string LocalFilepath { 
             get
             {
-                return Environment.CurrentDirectory + "\\" + Name;
+                return FileHandler.LocalDirectory + "\\" + Name;
             } 
         }
     }

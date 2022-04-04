@@ -12,7 +12,7 @@ namespace Lamp
         {
             public const string LatestRelease = @"https://api.github.com/repos/GenieClient/Genie4/releases/latest";
             public const string TestRelease = @"https://api.github.com/repos/GenieClient/Genie4/releases/tags/Test_Build";
-
+            public const string MapRepositoryZip = @"https://github.com/GenieClient/Maps/archive/refs/heads/main.zip";
         }
 
         public static class FileNames
