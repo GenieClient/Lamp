@@ -79,7 +79,7 @@ namespace Lamp
             Client.DefaultRequestHeaders.Add("User-Agent", "Genie Client Updater");
             try
             {
-                var streamTask = Client.GetStreamAsync(Paths.GitHub.LatestRelease);
+                var streamTask = Client.GetStreamAsync(githubPath);
 
                 Release latest = await JsonSerializer.DeserializeAsync<Release>(await streamTask);
                 return latest;
