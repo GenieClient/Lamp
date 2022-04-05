@@ -46,13 +46,16 @@ namespace Lamp
                     case "--auto":
                     case "--a":
                         auto = true;
+                        updateClient = true;
                         break;
                     case "--force":
                     case "--f":
                         force = true;
+                        updateClient = true;
                         break;
                     case "--t":
                     case "--test":
+                        updateClient = true;
                         loadTest = true;
                         break;
                     case "--l":
