@@ -13,9 +13,10 @@ namespace Lamp
         [JsonPropertyName("assets_url")]
         public string AssetsURL { get; set; }
         public Dictionary<string, Asset> Assets { get; set; }
+        public bool HasAssets { get; set; }
         public void LoadAssets()
         {
-            FileHandler.LoadReleaseAssets(this);
+            HasAssets = FileHandler.LoadReleaseAssets(this);
         }
 
     }

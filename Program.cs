@@ -24,17 +24,7 @@ namespace Lamp
             {
             
             }
-            Lamp.Rub();
             Environment.Exit(0);
         }
-
-        
-        
-
-        
-
-
-
-        
     }
 }

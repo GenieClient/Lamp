@@ -21,9 +21,8 @@ namespace Lamp
         bool updateMaps = false;
         bool updateConfig = false;
         bool updatePlugins = false;
-        string mapdir = $@"{FileHandler.LocalDirectory}/Maps";
-        string configdir = $@"{FileHandler.LocalDirectory}/Config";
-        string plugindir = $@"{FileHandler.LocalDirectory}/Plugins";
+        string mapdir = string.Empty;
+        string plugindir = string.Empty;
         Release latest = new Release();
         Release current = new Release();
         Release test = new Release();
@@ -32,9 +31,8 @@ namespace Lamp
         public Lamp(string[] args)
         {
             ProcessArgs(args);
-            if (string.IsNullOrWhiteSpace(mapdir)) mapdir = $@"{FileHandler.GetDataDirectory(local)}/Maps";
-            if (string.IsNullOrWhiteSpace(configdir)) configdir = $@"{FileHandler.GetDataDirectory(local)}";
-            if (string.IsNullOrWhiteSpace(plugindir)) plugindir = $@"{FileHandler.GetDataDirectory(local)}/Plugins";
+            if (string.IsNullOrWhiteSpace(mapdir)) mapdir = $@"{FileHandler.GetDataDirectory(local)}\Maps";
+            if (string.IsNullOrWhiteSpace(plugindir)) plugindir = $@"{FileHandler.GetDataDirectory(local)}\Plugins";
         }
 
         private void ProcessArgs(string[] args)
@@ -64,21 +62,19 @@ namespace Lamp
                     case "--m":
                     case "--map":
                     case "--maps":
-                        string[] mapArgs = arg.Split('"');
+                        string[] mapArgs = arg.Split('|');
                         if (mapArgs.Length > 1) mapdir = mapArgs[1];
                         updateMaps = true;
                         break;
                     case "--c":
                     case "--config":
-                        string[] configArgs = arg.Split('"');
-                        if (configArgs.Length > 1) configdir = configArgs[1];
                         updateConfig = true;
                         break;
                     case "--p":
                     case "--plugin":
                     case "--plugins":
-                        string[] pluginArgs = arg.Split('"');
-                        if (pluginArgs.Length > 1) configdir = pluginArgs[1];
+                        string[] pluginArgs = arg.Split('|');
+                        if (pluginArgs.Length > 1) plugindir = pluginArgs[1];
                         updatePlugins = true;
                         break;
 
@@ -115,9 +111,16 @@ namespace Lamp
         {
             string destination = $@"{mapdir}\{Path.GetFileName(Paths.GitHub.MapRepositoryZip)}";
             FileHandler.AcquirePackage(Paths.GitHub.MapRepositoryZip, destination);
+            foreach (string file in Directory.GetFiles($@"{mapdir}\Maps-main", "*.xml", SearchOption.AllDirectories))
+            {
+                FileHandler.Move(file, mapdir);
+            }
+            Directory.Delete($@"{mapdir}\Maps-main",  true);
         }
         private void ProcessConfigUpdates() 
         {
+            if (string.IsNullOrWhiteSpace(latest.Version)) latest = FileHandler.GetRelease(Paths.GitHub.LatestRelease).Result;
+            if (!latest.HasAssets) latest.LoadAssets();
             if (!latest.Assets.ContainsKey(Paths.FileNames.Config))
             {
                 Console.WriteLine("No Config Assets were found in the latest release.");
@@ -125,7 +128,7 @@ namespace Lamp
             try
             {
                 Asset configAsset = latest.Assets[Paths.FileNames.Config];
-                string destination = $@"{configdir}\{Paths.FileNames.Config}";
+                string destination = FileHandler.GetDataDirectory(local) + Paths.FileNames.Config;
                 FileHandler.AcquirePackage(configAsset.DownloadURL, destination);
             }
             catch (Exception ex)
@@ -135,20 +138,31 @@ namespace Lamp
         }
         private void ProcessClientUpdates() 
         {
-            if (loadTest) test.LoadAssets();
+            if (loadTest)
+            {
+                if (string.IsNullOrWhiteSpace(test.Version)) test = FileHandler.GetRelease(Paths.GitHub.TestRelease).Result;
+                if (!test.HasAssets) test.LoadAssets();
+            }
+            else
+            {
+                if (string.IsNullOrWhiteSpace(latest.Version)) latest = FileHandler.GetRelease(Paths.GitHub.LatestRelease).Result;
+                if (!latest.HasAssets) latest.LoadAssets();
+            }
             UpdateClient();
         }
         private void ProcessPluginUpdates() 
         {
+            if (string.IsNullOrWhiteSpace(latest.Version)) latest = FileHandler.GetRelease(Paths.GitHub.LatestRelease).Result;
+            if (!latest.HasAssets) latest.LoadAssets();
             if (!latest.Assets.ContainsKey(Paths.FileNames.Plugins))
             {
                 Console.WriteLine("No Plugin Assets were found in the latest release.");
             }
             try
             {
-                Asset configAsset = latest.Assets[Paths.FileNames.Config];
-                string destination = $@"{configdir}\{Paths.FileNames.Config}";
-                FileHandler.AcquirePackage(configAsset.DownloadURL, destination);
+                Asset pluginsAsset = latest.Assets[Paths.FileNames.Plugins];
+                string destination = $@"{plugindir}\{Paths.FileNames.Plugins}";
+                FileHandler.AcquirePackage(pluginsAsset.DownloadURL, destination);
             }
             catch (Exception ex)
             {
@@ -181,35 +195,115 @@ namespace Lamp
             else
             {
                 Console.Write(latest.Version);
-                Console.WriteLine(Fluff.Prompt);
-                Console.WriteLine("Would you like to download the latest version?");
-                Console.WriteLine($"Yes or Latest to download Genie {latest.Version}.");
-                Console.WriteLine("Test to download the latest Test Release.");
-                Console.WriteLine(Fluff.Prompt);
-                string? response = Console.ReadLine();
-                if (response.ToLower().StartsWith("y") || response.ToLower().StartsWith("latest"))
+                WriteInstructions();
+
+                bool interacting = true;
+                while (interacting)
                 {
                     Console.WriteLine(Fluff.Prompt);
-                    force = true;
-                    UpdateClient();
-                }
-                if (response.ToLower().StartsWith("test"))
-                {
-                    Console.WriteLine(Fluff.Prompt);
-                    test = FileHandler.GetRelease(Paths.GitHub.LatestRelease).Result;
-                    loadTest = true;
-                    test.LoadAssets();
-                    UpdateClient();
-                }
-                else
-                {
-                    if (current.Version != "0")
+                    string? response = Console.ReadLine();
+                    string arg = string.Empty;
+                    if(response.Contains(" "))
                     {
-                        Console.WriteLine(Fluff.Exit);
-                        FileHandler.LaunchGenie();
+                        arg = response.Substring(response.IndexOf(" ")).Trim();
+                        response = response.Split(' ')[0];
+                    }
+
+                    switch (response.ToLower())
+                    {
+                        case "latest":
+                            loadTest = false;
+                            force = true;
+                            UpdateClient();
+                            Console.WriteLine("The feather thrums with power, emitting a warm glow.");
+                            break;
+
+                        case "local":
+                            local = true;
+                            mapdir = $@"{FileHandler.GetDataDirectory(local)}\Maps";
+                            plugindir = $@"{FileHandler.GetDataDirectory(local)}\Plugins";
+                            Console.WriteLine("\tYou take a moment to recall your current directories are...");
+                            Console.WriteLine($"\tMAPS\t{mapdir}");
+                            Console.WriteLine($"\tPLUGINS\t{plugindir}");
+                            break;
+
+                        case "appdata":
+                            local = false;
+                            mapdir = $@"{FileHandler.GetDataDirectory(local)}\Maps";
+                            plugindir = $@"{FileHandler.GetDataDirectory(local)}\Plugins";
+                            Console.WriteLine("\tYou take a moment to recall your current directories are...");
+                            Console.WriteLine($"\tMAPS\t{mapdir}");
+                            Console.WriteLine($"\tPLUGINS\t{plugindir}");
+                            break;
+
+                        case "test":
+                            loadTest = true;
+                            test = FileHandler.GetRelease(Paths.GitHub.TestRelease).Result;
+                            test.LoadAssets();
+                            UpdateClient();
+                            Console.WriteLine("The feather thrums with latent power, its silvery geometric patterns glittering.");
+                            break;
+
+                        case "maps":
+                            if (!string.IsNullOrWhiteSpace(arg)) mapdir = arg;
+                            ProcessMapUpdates();
+                            Console.WriteLine($"Maps have been updated in {mapdir}");
+                            break;
+                        case "config":
+                            ProcessConfigUpdates();
+                            Console.WriteLine("Sparks of violet energy shoot from the pedestal into the feather, imbuing it with strength.");
+                            Console.WriteLine($"Base Config has been deployed to {FileHandler.GetDataDirectory(local)}.");
+                            break;
+                        case "plugins":
+                            if (!string.IsNullOrWhiteSpace(arg)) plugindir = arg;
+                            ProcessPluginUpdates();
+                            Console.WriteLine("Beams of violet light flicker around the feather, imbuing it with strange power.");
+                            Console.WriteLine($"Plugins have been update in {plugindir}.\r\nBe advised that the only plugins that are downloaded are ones with known fixes for\r\nknown compatibility issues with Genie 4.");
+                            break;
+                        case "jafar":
+                            Lamp.Rub();
+                            Console.WriteLine("I wish to be an all powerful genie!");
+                            interacting = false;
+                            break;
+                        case "genie":
+                            Lamp.Rub();
+                            interacting = false;
+                            break;
+                        case "exit":
+                            interacting = false;
+                            break;
+                        case "?":
+                        case "help":
+                            WriteInstructions();
+                            break;
+                        default:
+                            Console.WriteLine("I did not understand that. Please enter the command again. You can also enter \"?\" or \"HELP\" to repeat the list of commands.");
+                            break;
+
                     }
                 }
+                Console.WriteLine(Fluff.Exit);
             }
+        }
+
+        private void WriteInstructions()
+        {
+            Console.WriteLine(Fluff.Prompt);
+            Console.WriteLine(Fluff.Instructions);
+            Console.WriteLine($"LATEST\tto download Genie {latest.Version}.");
+            Console.WriteLine("TEST\tto download the latest Test Release.");
+            Console.WriteLine("LOCAL\tto set your data directory to the client directory.");
+            Console.WriteLine("APPDATA\tto set your data directory to the app data folder.");
+            Console.WriteLine("CONFIG\tto download a basic configuration.");
+            Console.WriteLine("MAPS\tto download the latest Maps. \r\n\tIt occurs to you that you could also specify a directory by quoting it.");
+            Console.WriteLine("\t\tex: MAPS \"C:\\Genie\\Maps");
+            Console.WriteLine("PLUGINS\tto download the latest Plugins. \r\n\tIt occurs to you that you could also specify a directory by quoting it.");
+            Console.WriteLine("\t\t-ex: PLUGINS \"C:\\Genie\\Plugins");
+            Console.WriteLine("GENIE\tto exit the Lamp and launch Genie.");
+            Console.WriteLine("EXIT\tto exit the Lamp wthout launching Genie.");
+            Console.WriteLine("\r\nYou take a moment to recall your current directories are...");
+            Console.WriteLine($"\tMAPS\t{mapdir}");
+            Console.WriteLine($"\tPLUGINS\t{plugindir}");
         }
         private void UpdateClient()
         {
@@ -245,6 +339,7 @@ namespace Lamp
                     }
                     Console.WriteLine("Downloading latest client");
                     FileHandler.AcquirePackage(zipAsset.DownloadURL, zipAsset.LocalFilepath);
+                    Lamp.Rub();
                 }
                 catch (Exception ex)
                 {

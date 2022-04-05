@@ -21,6 +21,8 @@ namespace Lamp
             Client.DefaultRequestHeaders.Accept.Clear();
             Client.DefaultRequestHeaders.Add("User-Agent", "Genie Client Updater");
             var response = Client.GetAsync(new Uri(downloadURL)).Result;
+            string directory = Path.GetDirectoryName(destinationPath);
+            if(!Directory.Exists(directory)) Directory.CreateDirectory(directory);
             using (var zipFile = new FileStream(destinationPath, FileMode.Create))
             {
                 response.Content.CopyToAsync(zipFile);
@@ -41,10 +43,10 @@ namespace Lamp
                     string? destinationDirectory = Path.GetDirectoryName(packageDestination);
                     FileInfo file = new FileInfo(packageDestination);
                     do { Thread.Sleep(10); } while (FileIsLocked(file));
-                    Console.WriteLine("Extracting Files.");
+                    //Console.WriteLine("Extracting Files.");
                     ZipFile.ExtractToDirectory(packageDestination, destinationDirectory, true);
                     do { Thread.Sleep(10); } while (FileIsLocked(file));
-                    Console.WriteLine("Cleaning Up.");
+                    //Console.WriteLine("Cleaning Up.");
                     File.Delete(packageDestination);
                 }
             }
@@ -54,7 +56,7 @@ namespace Lamp
             }
         }
 
-        public static void LoadReleaseAssets(Release release)
+        public static bool LoadReleaseAssets(Release release)
         {
             if (!string.IsNullOrWhiteSpace(release.AssetsURL))
             {
@@ -69,7 +71,9 @@ namespace Lamp
                 {
                     release.Assets.Add(asset.Name, asset);
                 }
+                return true;
             }
+            return false;
         }
 
         public static async Task<Release> GetRelease(string githubPath)
@@ -134,6 +138,18 @@ namespace Lamp
             return dir;
         }
         
+        public static void Move(string source, string destinationPath)
+        {
+            string filename = Path.GetFileName(source);
+            try
+            {
+                File.Move(source, $@"{destinationPath}\{filename}", true);
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine(ex);
+            }
+        }
 
         public static bool FileIsLocked(FileInfo file)
         {
