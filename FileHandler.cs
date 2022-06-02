@@ -74,28 +74,21 @@ namespace Lamp
                 int archiveNumber = 0;
                 while(File.Exists(archiveFile))
                 {
-                    
-                    string numberedArchiveFilename = archiveName + $"({archiveNumber}).zip";
+                    string numberedArchiveFilename = Path.Combine(directory, archiveName) + $"({archiveNumber}).zip";
                     if (!File.Exists(numberedArchiveFilename)) archiveFile = numberedArchiveFilename;
+                    archiveNumber++;
                 }
-
-                if (Directory.Exists(archiveTempFolder)) Directory.Delete(archiveTempFolder, true);
-                Directory.CreateDirectory(archiveTempFolder);
-                foreach(string file in Directory.GetFiles(directory, $"*.{extension}"))
+                using (FileStream saveStream = new FileStream(archiveFile, FileMode.Create))
                 {
-                    File.Copy(file, Path.Combine(archiveTempFolder, Path.GetFileName(file)));
+                    using (ZipArchive archive = new ZipArchive(saveStream, ZipArchiveMode.Create, true))
+                    {
+                        foreach (string file in Directory.GetFiles(directory, $"*.{extension}"))
+                        {
+                            archive.CreateEntryFromFile(file, Path.GetFileName(file));
+                        }
+                    }
                 }
-                ZipFile.CreateFromDirectory(archiveTempFolder, archiveFile);
-                if (File.Exists(archiveFile))
-                {
-                    Directory.Delete(archiveTempFolder, true);
-                    return true;
-                }
-                else
-                {
-                    Directory.Delete(archiveTempFolder, true);
-                    return false;
-                }
+                return File.Exists(archiveFile);
             }
             catch
             {
