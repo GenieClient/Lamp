@@ -321,24 +321,13 @@ namespace Lamp
                 {
                     Dictionary<string, Asset> assets = loadTest ? test.Assets : latest.Assets;
                     Asset zipAsset = new Asset() { Name = "Invalid" };
-                    if (RuntimeInformation.FrameworkDescription.StartsWith(".NET 6") && assets.ContainsKey(Paths.FileNames.RuntimeDependent))
+                    if (assets.ContainsKey(Paths.FileNames.Client)) 
                     {
-                        zipAsset = assets[Paths.FileNames.RuntimeDependent];
+                        zipAsset = assets[Paths.FileNames.Client];
                     }
-                    else
+                    else if(assets.ContainsKey(Paths.FileNames.x64))
                     {
-                        if (RuntimeInformation.OSArchitecture.ToString() == "X64" && assets.ContainsKey(Paths.FileNames.x64))
-                        {
-                            zipAsset = assets[Paths.FileNames.x64];
-                        }
-                        else if (assets.ContainsKey(Paths.FileNames.x86))
-                        {
-                            zipAsset = assets[Paths.FileNames.x86];
-                        }
-                        else
-                        {
-                            throw new FileNotFoundException("No valid package was found for your system.");
-                        }
+                        zipAsset = assets[Paths.FileNames.x64];
                     }
                     Console.WriteLine("Downloading latest client");
                     FileHandler.AcquirePackage(zipAsset.DownloadURL, zipAsset.LocalFilepath);
