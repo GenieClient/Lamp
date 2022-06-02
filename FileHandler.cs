@@ -55,7 +55,79 @@ namespace Lamp
                 Console.WriteLine(ex.Message);
             }
         }
+        public static bool ArchiveExtensions(string directory, string archiveName, string extension)
+        {
+            try
+            {
+                string archiveTempFolder = Path.Combine(directory, "tmp_LampArchive");
+                string archiveFile = Path.Combine(directory, archiveName) + ".zip";
+                int archiveNumber = 0;
+                while(File.Exists(archiveFile))
+                {
+                    
+                    string numberedArchiveFilename = archiveName + $"({archiveNumber}).zip";
+                    if (!File.Exists(numberedArchiveFilename)) archiveFile = numberedArchiveFilename;
+                }
 
+                if (Directory.Exists(archiveTempFolder)) Directory.Delete(archiveTempFolder, true);
+                Directory.CreateDirectory(archiveTempFolder);
+                foreach(string file in Directory.GetFiles(directory, $"*.{extension}"))
+                {
+                    File.Copy(file, Path.Combine(archiveTempFolder, Path.GetFileName(file)));
+                }
+                ZipFile.CreateFromDirectory(archiveTempFolder, archiveFile);
+                if (File.Exists(archiveFile))
+                {
+                    Directory.Delete(archiveTempFolder, true);
+                    return true;
+                }
+                else
+                {
+                    Directory.Delete(archiveTempFolder, true);
+                    return false;
+                }
+            }
+            catch
+            {
+                throw;
+            }
+        }
+
+        public static int ChangeAllExtensionsInDirectory(string directory, string oldExtension, string newExtension)
+        {
+            //returns the number of files changed
+            int changed = 0;
+            foreach (string file in Directory.GetFiles(directory, $"*.{oldExtension}"))
+            {
+                changed += ChangeExtension(new FileInfo(file), newExtension) ? 1 : 0;
+            }
+            return changed;
+        }
+
+        public static bool ChangeExtension(FileInfo file, string newExtension)
+        {
+            try
+            {
+                do { Thread.Sleep(10); } while (FileIsLocked(file));
+                string destinationFile = Path.Combine(file.DirectoryName, Path.GetFileNameWithoutExtension(file.FullName)) + $".{newExtension}";
+                bool overwrite = false;
+                if (File.Exists(destinationFile))
+                {
+                    Console.WriteLine($"The file {Path.GetFileName(destinationFile)} already exists. Do you wish to overwrite it? This may result in a loss of data. It is advised that you do not. You should compare the individual files to determine which to keep.");
+                    Console.WriteLine($"Enter Y to overwrite.");
+                    Console.WriteLine(Fluff.Prompt);
+                    string? response = Console.ReadLine();
+                    overwrite = response.ToLower().StartsWith("y");
+                    if (!overwrite) return false;
+                }
+                File.Move(file.FullName, destinationFile, overwrite);
+                return File.Exists(destinationFile);
+            }
+            catch
+            {
+                throw;
+            }
+        }
         public static bool LoadReleaseAssets(Release release)
         {
             if (!string.IsNullOrWhiteSpace(release.AssetsURL))
