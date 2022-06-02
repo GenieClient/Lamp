@@ -21,6 +21,7 @@ namespace Lamp
             public const string RuntimeDependent = "Genie4-x64-Runtime-Dependent.zip";
             public const string x86 = "Genie4-x86.zip";
             public const string x64 = "Genie4-x64.zip";
+            public const string Client = "Genie4.zip";
             public const string Plugins = "Plugins.zip";
             public const string Config = "Base.Config.Files.zip";
         }
