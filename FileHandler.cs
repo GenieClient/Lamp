@@ -44,7 +44,17 @@ namespace Lamp
                     FileInfo file = new FileInfo(packageDestination);
                     do { Thread.Sleep(10); } while (FileIsLocked(file));
                     //Console.WriteLine("Extracting Files.");
-                    ZipFile.ExtractToDirectory(packageDestination, destinationDirectory, true);
+                    using (ZipArchive archive = ZipFile.OpenRead(packageDestination))
+                    {
+                        foreach (ZipArchiveEntry entry in archive.Entries)
+                        {
+                            string packageFile = Path.Combine(destinationDirectory, entry.FullName);
+                            int waits = 0;
+                            do { Thread.Sleep(10); waits++; } while (FileIsLocked(file) && waits < 100);
+                            if (File.Exists(packageFile)) File.Delete(packageFile);
+                            entry.ExtractToFile(packageFile);
+                        }
+                    }
                     do { Thread.Sleep(10); } while (FileIsLocked(file));
                     //Console.WriteLine("Cleaning Up.");
                     File.Delete(packageDestination);
