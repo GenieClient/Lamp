@@ -69,7 +69,6 @@ namespace Lamp
         {
             try
             {
-                string archiveTempFolder = Path.Combine(directory, "tmp_LampArchive");
                 string archiveFile = Path.Combine(directory, archiveName) + ".zip";
                 int archiveNumber = 0;
                 while(File.Exists(archiveFile))
