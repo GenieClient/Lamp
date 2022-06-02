@@ -110,7 +110,7 @@ namespace Lamp
             return true;
         }
 
-        private void ProcessMapUpdates() 
+        private void ProcessMapUpdates()
         {
             string destination = $@"{mapdir}\{Path.GetFileName(Paths.GitHub.MapRepositoryZip)}";
             FileHandler.AcquirePackage(Paths.GitHub.MapRepositoryZip, destination);
@@ -118,9 +118,9 @@ namespace Lamp
             {
                 FileHandler.Move(file, mapdir);
             }
-            Directory.Delete($@"{mapdir}\Maps-main",  true);
+            Directory.Delete($@"{mapdir}\Maps-main", true);
         }
-        private void ProcessConfigUpdates() 
+        private void ProcessConfigUpdates()
         {
             if (string.IsNullOrWhiteSpace(latest.Version)) latest = FileHandler.GetRelease(Paths.GitHub.LatestRelease).Result;
             if (!latest.HasAssets) latest.LoadAssets();
@@ -139,7 +139,7 @@ namespace Lamp
                 Console.WriteLine($"An error occurred: {ex.Message}");
             }
         }
-        private void ProcessClientUpdates() 
+        private void ProcessClientUpdates()
         {
             if (loadTest)
             {
@@ -153,7 +153,7 @@ namespace Lamp
             }
             UpdateClient();
         }
-        private void ProcessPluginUpdates() 
+        private void ProcessPluginUpdates()
         {
             if (string.IsNullOrWhiteSpace(latest.Version)) latest = FileHandler.GetRelease(Paths.GitHub.LatestRelease).Result;
             if (!latest.HasAssets) latest.LoadAssets();
@@ -206,7 +206,7 @@ namespace Lamp
                     Console.WriteLine(Fluff.Prompt);
                     string? response = Console.ReadLine();
                     string arg = string.Empty;
-                    if(response.Contains(" "))
+                    if (response.Contains(" "))
                     {
                         arg = response.Substring(response.IndexOf(" ")).Trim();
                         response = response.Split(' ')[0];
@@ -264,8 +264,8 @@ namespace Lamp
                             Console.WriteLine($"Plugins have been update in {plugindir}.\r\nBe advised that the only plugins that are downloaded are ones with known fixes for\r\nknown compatibility issues with Genie 4.");
                             break;
                         case "jafar":
-                            Lamp.Rub();
                             Console.WriteLine("I wish to be an all powerful genie!");
+                            Lamp.Rub();
                             interacting = false;
                             break;
                         case "genie":
@@ -278,6 +278,9 @@ namespace Lamp
                         case "?":
                         case "help":
                             WriteInstructions();
+                            break;
+                        case "transmogrify":
+                            Transmogrify(arg);
                             break;
                         default:
                             Console.WriteLine("I did not understand that. Please enter the command again. You can also enter \"?\" or \"HELP\" to repeat the list of commands.");
@@ -298,6 +301,7 @@ namespace Lamp
             Console.WriteLine("LOCAL\tto set your data directory to the client directory.");
             Console.WriteLine("APPDATA\tto set your data directory to the app data folder.");
             Console.WriteLine("CONFIG\tto download a basic configuration.");
+            Console.WriteLine("TRANSMOGRIFY\tto convert all files of one type to another. Type TRANSMOGRIFY for syntax.");
             Console.WriteLine("MAPS\tto download the latest Maps. \r\n\tIt occurs to you that you could also specify a directory by quoting it.");
             Console.WriteLine("\t\tex: MAPS \"C:\\Genie\\Maps");
             Console.WriteLine("PLUGINS\tto download the latest Plugins. \r\n\tIt occurs to you that you could also specify a directory by quoting it.");
@@ -307,6 +311,110 @@ namespace Lamp
             Console.WriteLine("\r\nYou take a moment to recall your current directories are...");
             Console.WriteLine($"\tMAPS\t{mapdir}");
             Console.WriteLine($"\tPLUGINS\t{plugindir}");
+        }
+
+        private void Transmogrify(string argString)
+        {
+            string[] args = argString.Split(" ");
+
+            if (args.Length < 3)
+            {
+                Console.WriteLine("This method is used to convert files from extension to another.");
+                Console.WriteLine("It will create an archive in the target directory.");
+                Console.WriteLine("Be advised that this can be dangerous as it will operate on any extension.");
+                Console.WriteLine("PATH does not need to be enclosed in quotes.");
+                Console.WriteLine("Syntax: TRANSMOGRIFY {PATH} {OLD EXTENSION} {NEW EXTENSION}");
+                return;
+            }
+            string path = CombineTransmogrifyPath(args);
+            if (!Directory.Exists(path))
+            {
+                Console.WriteLine($"The indicated directory was not found: {path}");
+                return;
+            }
+            string oldExtension = args[args.Length - 2];
+            string newExtension = args[args.Length - 1];
+            if (oldExtension.ToLower() == newExtension.ToLower())
+            {
+                Console.WriteLine($"The old extension, {oldExtension}, is the same as the new new extension, {newExtension}");
+                Console.WriteLine($"If your intent is to change capitalization, this is not supported due to language constraints.");
+                Console.WriteLine($"If you would like to change that, feel free to contribute a new renaming method to this Open Source project.");
+                return;
+            }
+            if(!ConfirmTransmogrify(path, newExtension, oldExtension)) return;
+            string step = "Initializing";
+            try
+            {
+                step = "archiving the directory";
+                if (!FileHandler.ArchiveExtensions(path, "Lamp Generated Archive", oldExtension))
+                {
+                    Console.WriteLine($"Lamp was unable to archive the directory {path}");
+                    Console.WriteLine($"Process aborted.");
+                    return;
+                }
+                step = "renaming files";
+                int filesRenamed = FileHandler.ChangeAllExtensionsInDirectory(path, oldExtension, newExtension);
+                Console.WriteLine($"Transmogrify completed. {filesRenamed} files were changed.");
+                Console.WriteLine($"An archive of the previous files has been created in {path}");
+                Console.WriteLine($"Please manually verify success before deleting the Lamp Generated Archive");
+                return;
+            } catch (Exception ex)
+            {
+                Console.WriteLine($"An error occurred while {step}");
+                Console.WriteLine(ex.Message);
+            }
+        }
+        private bool ConfirmTransmogrify(string path, string newExtension, string oldExtension)
+        {
+            Console.WriteLine($"This command will change the extension of for all files of type {oldExtension} to {newExtension} in the directory {path}.");
+            Console.WriteLine($"Used incorrectly this can and will destroy your files. Please be careful.");
+            Console.WriteLine($"Lamp will create an archive, but it is strongly recommended you back up your files yourself, separately, as well.");
+            Console.WriteLine($"Please confirm that you have entered the correct path, old extension, and new by reentering the full command.");
+            try
+            {
+                Console.WriteLine(Fluff.Prompt);
+                string? response = Console.ReadLine();
+                string inputPath = CombineTransmogrifyPath(response.Substring(response.IndexOf(" ")).Trim().Split(' '));
+                string[] args = response.Split(' ');
+                string inputOldExtension = args[args.Length - 2];
+                string inputNewExtension = args[args.Length - 1];
+                if(args[0].ToLower() != "transmogrify" || inputPath.ToLower() != path.ToLower() || inputOldExtension.ToLower() != oldExtension.ToLower() || inputNewExtension.ToLower() != newExtension.ToLower())
+                {
+                    throw new Exception();
+                }
+
+                Console.WriteLine($"Checks out. Please double-down and confirm you understand by entering Y or Yes");
+                response = null;
+                Console.WriteLine(Fluff.Prompt);
+                response = Console.ReadLine();
+                if(response.ToLower().Trim() != "y" && response.ToLower().Trim() != "yes")
+                {
+                    throw new Exception();
+                }
+                return true;
+            }
+            catch
+            {
+                Console.WriteLine("Command could not be confirmed. Aborting.");
+                return false;
+            }
+        }
+
+        private string CombineTransmogrifyPath(string[] args)
+        {
+            string path = args[0];
+            if(args.Length > 3) 
+            {
+                //more than the needed number of args were supplied. 
+                //this probably means a path string which contains a space
+                //so in such a case let's stitch all but the last 2 together
+                //back into the path
+                for(int i = 1; i<args.Length - 2; i++)
+                {
+                    path += $" {args[i]}";
+                }
+            }
+            return path;
         }
         private void UpdateClient()
         {
