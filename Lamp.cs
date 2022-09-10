@@ -459,7 +459,7 @@ namespace Lamp
                         zipAsset = assets[Paths.FileNames.x64];
                     }
                     Console.WriteLine("Downloading latest client");
-                    FileHandler.AcquirePackageInMemory(zipAsset.DownloadURL, zipAsset.LocalFilepath);
+                    FileHandler.AcquirePackageInMemory(zipAsset.DownloadURL, Path.GetDirectoryName(zipAsset.LocalFilepath));
                     Lamp.Rub();
                 }
                 catch (Exception ex)
