@@ -21,8 +21,11 @@ namespace Lamp
         bool updateMaps = false;
         bool updateConfig = false;
         bool updatePlugins = false;
+        bool updateScripts = false;
         string mapdir = string.Empty;
         string plugindir = string.Empty;
+        string scriptdir = string.Empty;
+        string scriptrepo = string.Empty;
         Release latest = new Release();
         Release current = new Release();
         Release test = new Release();
@@ -33,6 +36,7 @@ namespace Lamp
             ProcessArgs(args);
             if (string.IsNullOrWhiteSpace(mapdir)) mapdir = $@"{FileHandler.GetDataDirectory(local)}\Maps";
             if (string.IsNullOrWhiteSpace(plugindir)) plugindir = $@"{FileHandler.GetDataDirectory(local)}\Plugins";
+            if (string.IsNullOrWhiteSpace(scriptdir)) scriptdir = $@"{FileHandler.GetDataDirectory(local)}\Scripts";
         }
 
         private void ProcessArgs(string[] args)
@@ -48,6 +52,13 @@ namespace Lamp
                         auto = true;
                         updateClient = true;
                         break;
+
+                    case "--background":
+                    case "--bg":
+                    case "--b":
+                        auto = true;
+                        break;
+
                     case "--force":
                     case "--f":
                         force = true;
@@ -80,6 +91,17 @@ namespace Lamp
                         if (pluginArgs.Length > 1) plugindir = pluginArgs[1];
                         updatePlugins = true;
                         break;
+                    case "--s":
+                    case "--script":
+                    case "--scripts":
+                        string[] scriptArgs = arg.Split('|');
+                        if (scriptArgs.Length > 2)
+                        {
+                            scriptdir = scriptArgs[1];
+                            scriptrepo = scriptArgs[2];
+                            updateScripts = true;
+                        }
+                        break;
 
                     default:
                         break;
@@ -102,6 +124,7 @@ namespace Lamp
                     if (updateConfig) ProcessConfigUpdates();
                 }
                 if (updateMaps) ProcessMapUpdates();
+                if (updateScripts) ProcessScriptUpdates();
             }
             else
             {
@@ -112,13 +135,12 @@ namespace Lamp
 
         private void ProcessMapUpdates()
         {
-            string destination = $@"{mapdir}\{Path.GetFileName(Paths.GitHub.MapRepositoryZip)}";
-            FileHandler.AcquirePackage(Paths.GitHub.MapRepositoryZip, destination);
-            foreach (string file in Directory.GetFiles($@"{mapdir}\Maps-main", "*.xml", SearchOption.AllDirectories))
-            {
-                FileHandler.Move(file, mapdir);
-            }
-            Directory.Delete($@"{mapdir}\Maps-main", true);
+            FileHandler.AcquirePackageInMemory(Paths.GitHub.MapRepositoryZip, mapdir);
+        }
+
+        private void ProcessScriptUpdates()
+        {
+            FileHandler.AcquirePackageInMemory(scriptrepo, scriptdir);
         }
         private void ProcessConfigUpdates()
         {
@@ -132,7 +154,7 @@ namespace Lamp
             {
                 Asset configAsset = latest.Assets[Paths.FileNames.Config];
                 string destination = FileHandler.GetDataDirectory(local) + Paths.FileNames.Config;
-                FileHandler.AcquirePackage(configAsset.DownloadURL, destination);
+                FileHandler.AcquirePackageInMemory(configAsset.DownloadURL, destination);
             }
             catch (Exception ex)
             {
@@ -164,8 +186,7 @@ namespace Lamp
             try
             {
                 Asset pluginsAsset = latest.Assets[Paths.FileNames.Plugins];
-                string destination = $@"{plugindir}\{Paths.FileNames.Plugins}";
-                FileHandler.AcquirePackage(pluginsAsset.DownloadURL, destination);
+                FileHandler.AcquirePackageInMemory(pluginsAsset.DownloadURL, plugindir);
             }
             catch (Exception ex)
             {
@@ -319,7 +340,7 @@ namespace Lamp
 
             if (args.Length < 3)
             {
-                Console.WriteLine("This method is used to convert files from extension to another.");
+                Console.WriteLine("This method is used to convert files from one extension to another.");
                 Console.WriteLine("It will create an archive in the target directory.");
                 Console.WriteLine("Be advised that this can be dangerous as it will operate on any extension.");
                 Console.WriteLine("PATH does not need to be enclosed in quotes.");
@@ -438,7 +459,7 @@ namespace Lamp
                         zipAsset = assets[Paths.FileNames.x64];
                     }
                     Console.WriteLine("Downloading latest client");
-                    FileHandler.AcquirePackage(zipAsset.DownloadURL, zipAsset.LocalFilepath);
+                    FileHandler.AcquirePackageInMemory(zipAsset.DownloadURL, zipAsset.LocalFilepath);
                     Lamp.Rub();
                 }
                 catch (Exception ex)

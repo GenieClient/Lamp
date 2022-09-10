@@ -29,7 +29,17 @@ namespace Lamp
             }
         }
 
-        public static void AcquirePackage(string packageURL, string packageDestination)
+        public static MemoryStream DownloadToMemoryStream(string downloadURL)
+        {
+            Client.DefaultRequestHeaders.Accept.Clear();
+            Client.DefaultRequestHeaders.Add("User-Agent", "Genie Client Updater");
+            var response = Client.GetAsync(new Uri(downloadURL)).Result;
+            MemoryStream memoryStream = new MemoryStream();
+            response.Content.CopyToAsync(memoryStream);
+            return memoryStream;
+        }
+
+        public static void AcquirePackageInMemory(string packageURL, string packageDestination)
         {
             if (!RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
             {
@@ -37,27 +47,36 @@ namespace Lamp
             }
             try
             {
-                DownloadZip(packageURL, packageDestination);
-                if (File.Exists(packageDestination))
+                ZipArchive archive = new ZipArchive(DownloadToMemoryStream(packageURL));
+                int stripFromBeginning = 0;
+                if (archive.Entries.Count > 0 && archive.Entries[0].FullName.EndsWith("-main/"))
                 {
-                    string? destinationDirectory = Path.GetDirectoryName(packageDestination);
-                    FileInfo file = new FileInfo(packageDestination);
-                    do { Thread.Sleep(10); } while (FileIsLocked(file));
-                    //Console.WriteLine("Extracting Files.");
-                    using (ZipArchive archive = ZipFile.OpenRead(packageDestination))
+                    //if this is from a github repo it will be in a folder in the zip's root that ends -main/
+                    //and we want to not extract that and extract from it so we need to strip it off the path
+                    stripFromBeginning = archive.Entries[0].FullName.Length;
+                }
+                foreach (ZipArchiveEntry entry in archive.Entries)
+                {
+                    string packageFile = Path.Combine(packageDestination, entry.FullName.Remove(0, stripFromBeginning).Replace("/", "\\"));
+                    if (entry.FullName.Length - stripFromBeginning > 0)
                     {
-                        foreach (ZipArchiveEntry entry in archive.Entries)
+                        if (File.Exists(packageFile))
                         {
-                            string packageFile = Path.Combine(destinationDirectory, entry.FullName);
-                            int waits = 0;
-                            do { Thread.Sleep(10); waits++; } while (FileIsLocked(file) && waits < 100);
-                            if (File.Exists(packageFile)) File.Delete(packageFile);
-                            entry.ExtractToFile(packageFile);
+                            FileInfo existingFile = new FileInfo(packageFile);
+                            if (existingFile.LastWriteTime != entry.LastWriteTime)
+                            {
+                                File.Delete(packageFile);
+                            }
+                        }
+                        if (packageFile.EndsWith("\\")) 
+                        {
+                            if(!Directory.Exists(packageFile)) Directory.CreateDirectory(packageFile);
+                        }
+                        else
+                        {
+                            if (!File.Exists(packageFile)) entry.ExtractToFile(packageFile);
                         }
                     }
-                    do { Thread.Sleep(10); } while (FileIsLocked(file));
-                    //Console.WriteLine("Cleaning Up.");
-                    File.Delete(packageDestination);
                 }
             }
             catch (FileNotFoundException ex)
@@ -65,6 +84,8 @@ namespace Lamp
                 Console.WriteLine(ex.Message);
             }
         }
+
+        
         public static bool ArchiveExtensions(string directory, string archiveName, string extension)
         {
             try
