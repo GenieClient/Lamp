@@ -18,7 +18,14 @@ namespace Lamp
         {
 
             bool finished = false;
-            finished = new Lamp(args).Execute();
+            try
+            {
+                finished = new Lamp(args).Execute();
+            }
+            catch
+            {
+                finished = true;
+            }
 
             while(!finished)
             {
