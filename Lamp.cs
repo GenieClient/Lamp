@@ -282,7 +282,7 @@ namespace Lamp
                             if (!string.IsNullOrWhiteSpace(arg)) plugindir = arg;
                             ProcessPluginUpdates();
                             Console.WriteLine("Beams of violet light flicker around the feather, imbuing it with strange power.");
-                            Console.WriteLine($"Plugins have been update in {plugindir}.\r\nBe advised that the only plugins that are downloaded are ones with known fixes for\r\nknown compatibility issues with Genie 4.");
+                            Console.WriteLine($"Plugins have been updated in {plugindir}.\r\nBe advised that the only plugins that are downloaded are ones with known fixes for\r\nknown compatibility issues with Genie 4.");
                             break;
                         case "jafar":
                             Console.WriteLine("I wish to be an all powerful genie!");
