@@ -16,6 +16,9 @@ namespace Lamp
     {
         private static readonly HttpClient Client = new HttpClient();
         public static readonly string LocalDirectory = AppDomain.CurrentDomain.BaseDirectory;
+        public static readonly string LampFilepath = Path.Combine(LocalDirectory, "Lamp.exe");
+
+
         public static void DownloadZip(string downloadURL, string destinationPath)
         {
             Client.DefaultRequestHeaders.Accept.Clear();
@@ -39,15 +42,17 @@ namespace Lamp
             return memoryStream;
         }
 
-        public static void AcquirePackageInMemory(string packageURL, string packageDestination)
+        public static async Task<bool> AcquirePackageInMemory(string packageURL, string packageDestination)
         {
             if (!RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
             {
                 Console.Write("The Updater is not currently supported for this system.");
+                return false;
             }
             try
             {
-                ZipArchive archive = new ZipArchive(DownloadToMemoryStream(packageURL));
+                MemoryStream zipFile = DownloadToMemoryStream(packageURL);
+                ZipArchive archive = new ZipArchive(zipFile);
                 int stripFromBeginning = 0;
                 if (archive.Entries.Count > 0 && archive.Entries[0].FullName.EndsWith("-main/"))
                 {
@@ -58,6 +63,7 @@ namespace Lamp
                 foreach (ZipArchiveEntry entry in archive.Entries)
                 {
                     string packageFile = Path.Combine(packageDestination, entry.FullName.Remove(0, stripFromBeginning).Replace("/", "\\"));
+                    if (packageFile.ToUpper() == LampFilepath.ToUpper()) continue; //don't try to update Lamp, we're mid-execution.
                     if (entry.FullName.Length - stripFromBeginning > 0)
                     {
                         if (File.Exists(packageFile))
@@ -78,10 +84,12 @@ namespace Lamp
                         }
                     }
                 }
+                return true;
             }
             catch (FileNotFoundException ex)
             {
                 Console.WriteLine(ex.Message);
+                return false;
             }
         }
 
@@ -151,7 +159,7 @@ namespace Lamp
                 throw;
             }
         }
-        public static bool LoadReleaseAssets(Release release)
+        public static async Task<bool> LoadReleaseAssets(Release release)
         {
             if (!string.IsNullOrWhiteSpace(release.AssetsURL))
             {
@@ -205,7 +213,7 @@ namespace Lamp
 
         }
 
-        public static void LaunchGenie()
+        public static async Task<bool> LaunchGenie()
         {
             if (File.Exists(@$"{LocalDirectory}\genie.exe"))
             {
@@ -214,9 +222,11 @@ namespace Lamp
                 {
                     FileInfo file = new FileInfo(@$"{LocalDirectory}\genie.exe");
                     do { Thread.Sleep(10); } while (FileIsLocked(file));
-                    Process.Start($"{LocalDirectory}\\genie.exe");
+                    Process genie = Process.Start($"{LocalDirectory}\\genie.exe");
+                    return genie != null;
                 }
             }
+            return false;
         }
 
         public static string GetDataDirectory(bool local)

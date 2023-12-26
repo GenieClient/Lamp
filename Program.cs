@@ -20,16 +20,16 @@ namespace Lamp
             bool finished = false;
             try
             {
-                finished = new Lamp(args).Execute();
+                finished = await new Lamp(args).Execute();
             }
-            catch
+            catch(Exception ex) 
             {
-                finished = true;
+                Console.WriteLine(ex.ToString());
             }
 
             while(!finished)
             {
-            
+                await Task.Delay(1000);
             }
             Environment.Exit(0);
         }

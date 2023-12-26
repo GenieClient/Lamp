@@ -1,5 +1,6 @@
 ﻿using System.Text.Json.Serialization;
 using System.Collections.Generic;
+using System.Threading.Tasks;
 
 
 namespace Lamp
@@ -14,9 +15,9 @@ namespace Lamp
         public string AssetsURL { get; set; }
         public Dictionary<string, Asset> Assets { get; set; }
         public bool HasAssets { get; set; }
-        public void LoadAssets()
+        public async Task LoadAssets()
         {
-            HasAssets = FileHandler.LoadReleaseAssets(this);
+            HasAssets = await FileHandler.LoadReleaseAssets(this);
         }
 
     }
