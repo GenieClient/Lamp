@@ -209,10 +209,19 @@ namespace Lamp
             Console.Write("Checking Versions");
             current = await FileHandler.GetCurrentVersion();
             Console.Write(".");
-            latest = await FileHandler.GetRelease(Paths.GitHub.LatestRelease);
-            Console.Write(".");
-            test = await FileHandler.GetRelease(Paths.GitHub.TestRelease);
-            Console.Write(".");
+            if (auto)
+            {
+                if (loadTest)
+                {
+                    test = await FileHandler.GetRelease(Paths.GitHub.TestRelease);
+                }
+                else
+                {
+                    latest = await FileHandler.GetRelease(Paths.GitHub.LatestRelease);
+                }
+                Console.Write(".");
+            }
+            Console.WriteLine();
             bool success = true;
             if (auto)
             {
@@ -305,16 +314,6 @@ namespace Lamp
         }
         private async Task<bool> ProcessClientUpdates()
         {
-            if (loadTest)
-            {
-                test = FileHandler.GetRelease(Paths.GitHub.TestRelease).Result;
-                await test.LoadAssets();
-            }
-            else
-            {
-                latest = FileHandler.GetRelease(Paths.GitHub.LatestRelease).Result;
-                await latest.LoadAssets();
-            }
             return await UpdateClient();
         }
 
@@ -577,7 +576,7 @@ namespace Lamp
                 try
                 {
                     Release release = loadTest ? test : latest;
-                    await release.LoadAssets();
+                    if (!release.HasAssets) await release.LoadAssets();
                     Dictionary<string, Asset> assets = release.Assets;
                     Asset zipAsset = null;
                     if (assets.ContainsKey(Paths.FileNames.Client))
