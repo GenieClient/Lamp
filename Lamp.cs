@@ -579,18 +579,25 @@ namespace Lamp
                     Release release = loadTest ? test : latest;
                     await release.LoadAssets();
                     Dictionary<string, Asset> assets = release.Assets;
-                    Asset zipAsset = new Asset() { Name = "Invalid" };
-                    if (assets.ContainsKey(Paths.FileNames.Client)) 
+                    Asset zipAsset = null;
+                    if (assets.ContainsKey(Paths.FileNames.Client))
                     {
                         zipAsset = assets[Paths.FileNames.Client];
                     }
-                    else if(assets.ContainsKey(Paths.FileNames.x64))
+                    else if (assets.ContainsKey(Paths.FileNames.x64))
                     {
                         zipAsset = assets[Paths.FileNames.x64];
                     }
+
+                    if (zipAsset == null || string.IsNullOrEmpty(zipAsset.DownloadURL))
+                    {
+                        Console.WriteLine("No client package found in release assets.");
+                        return false;
+                    }
+
                     Console.WriteLine("Downloading latest client");
-                    
-                    if(await FileHandler.AcquirePackageInMemory(zipAsset.DownloadURL, Path.GetDirectoryName(zipAsset.LocalFilepath)))
+
+                    if (await FileHandler.AcquirePackageInMemory(zipAsset.DownloadURL, Path.GetDirectoryName(zipAsset.LocalFilepath)))
                     {
                         return await Lamp.Rub();
                     }
