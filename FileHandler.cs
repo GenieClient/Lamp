@@ -32,13 +32,15 @@ namespace Lamp
             }
         }
 
-        public static MemoryStream DownloadToMemoryStream(string downloadURL)
+        public static async Task<MemoryStream> DownloadToMemoryStream(string downloadURL)
         {
             Client.DefaultRequestHeaders.Accept.Clear();
             Client.DefaultRequestHeaders.Add("User-Agent", "Genie Client Updater");
-            var response = Client.GetAsync(new Uri(downloadURL)).Result;
+            var response = await Client.GetAsync(new Uri(downloadURL)).ConfigureAwait(false);
+            response.EnsureSuccessStatusCode();
             MemoryStream memoryStream = new MemoryStream();
-            response.Content.CopyToAsync(memoryStream);
+            await response.Content.CopyToAsync(memoryStream).ConfigureAwait(false);
+            memoryStream.Position = 0;
             return memoryStream;
         }
 
@@ -51,7 +53,7 @@ namespace Lamp
             }
             try
             {
-                MemoryStream zipFile = DownloadToMemoryStream(packageURL);
+                MemoryStream zipFile = await DownloadToMemoryStream(packageURL).ConfigureAwait(false);
                 ZipArchive archive = new ZipArchive(zipFile);
                 int stripFromBeginning = 0;
                 if (archive.Entries.Count > 0 && archive.Entries[0].FullName.EndsWith("-main/"))
@@ -168,8 +170,8 @@ namespace Lamp
                 Client.DefaultRequestHeaders.Accept.Add(new MediaTypeWithQualityHeaderValue("application/vnd.github.v3+json"));
                 Client.DefaultRequestHeaders.Add("User-Agent", "Genie Client Updater");
 
-                var streamTask = Client.GetStreamAsync(release.AssetsURL).Result;
-                List<Asset> latestAssets = JsonSerializer.Deserialize<List<Asset>>(streamTask);
+                var stream = await Client.GetStreamAsync(release.AssetsURL).ConfigureAwait(false);
+                List<Asset> latestAssets = await JsonSerializer.DeserializeAsync<List<Asset>>(stream).ConfigureAwait(false);
                 foreach (Asset asset in latestAssets)
                 {
                     release.Assets.Add(asset.Name, asset);
