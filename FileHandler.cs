@@ -82,7 +82,12 @@ namespace Lamp
                         }
                         else
                         {
-                            if (!File.Exists(packageFile)) entry.ExtractToFile(packageFile);
+                            if (!File.Exists(packageFile))
+                            {
+                                string dir = Path.GetDirectoryName(packageFile);
+                                if (!Directory.Exists(dir)) Directory.CreateDirectory(dir);
+                                entry.ExtractToFile(packageFile);
+                            }
                         }
                     }
                 }
@@ -233,16 +238,7 @@ namespace Lamp
 
         public static string GetDataDirectory(bool local)
         {
-            if (local) return LocalDirectory;
-
-            string dir = Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData);
-            dir = System.IO.Path.Combine(dir, Lamp.GenieProductName);
-            if (!System.IO.Directory.Exists(dir))
-            {
-                System.IO.Directory.CreateDirectory(dir);
-            }
-
-            return dir;
+            return LocalDirectory;
         }
         
         public static void Move(string source, string destinationPath)

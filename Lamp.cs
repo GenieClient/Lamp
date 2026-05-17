@@ -181,8 +181,8 @@ namespace Lamp
                         {
                             scriptdir = scriptArgs[1];
                             scriptrepo = scriptArgs[2];
-                            updateScripts = true;
                         }
+                        updateScripts = true;
                         break;
                     case "--art":
                     case "--images":
@@ -191,8 +191,8 @@ namespace Lamp
                         {
                             artdir = artArgs[1];
                             artrepo = artArgs[2];
-                            updateArt = true;
                         }
+                        updateArt = true;
                         break;
                     case "--ms":
                     case "--mapscripts":
